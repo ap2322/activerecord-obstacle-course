@@ -20,16 +20,16 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     expected_result = ['Abercrombie', 'Banana Republic', 'Calvin Klein', 'Dickies', 'Eddie Bauer', 'Fox', 'Giorgio Armani', 'Izod', 'J.crew']
 
     # ----------------------- Using Ruby -------------------------
-    items = Item.all
-
-    ordered_items = items.map do |item|
-      item if item.orders.present?
-    end.compact
-
-    ordered_items_names = ordered_items.map(&:name)
-    ordered_items_names.sort
+    # items = Item.all
+    #
+    # ordered_items = items.map do |item|
+    #   item if item.orders.present?
+    # end.compact
+    #
+    # ordered_items_names = ordered_items.map(&:name)
+    # ordered_items_names.sort
     # ------------------------------------------------------------
-
+    ordered_items_names = Item.joins(:orders).select(:name).order(:name).distinct.pluck(:name)
     # ------------------ ActiveRecord Solution ----------------------
     # Solution goes here
     # When you find a solution, experiment with adjusting your method chaining
@@ -41,7 +41,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     expect(ordered_items_names).to_not include(unordered_items)
   end
 
-  xit '27. returns a table of information for all users orders' do
+  it '27. returns a table of information for all users orders' do
     custom_results = [@user_3, @user_1, @user_2]
 
     # using a single ActiveRecord call, fetch a joined object that mimics the
@@ -53,7 +53,12 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     # Zoolander      |         6
 
     # ------------------ ActiveRecord Solution ----------------------
-    custom_results = []
+
+    custom_results = User.select('users.name, COUNT(orders.id) as total_order_count')
+                        .joins(:orders)
+                        .group(:name)
+                        .order('COUNT(orders.id) ASC')
+
     # ---------------------------------------------------------------
 
     expect(custom_results[0].name).to eq(@user_3.name)
@@ -64,7 +69,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     expect(custom_results[2].total_order_count).to eq(6)
   end
 
-  xit '28. returns a table of information for all users items' do
+  it '28. returns a table of information for all users items' do
     custom_results = [@user_2, @user_3, @user_1]
 
     # using a single ActiveRecord call, fetch a joined object that mimics the
@@ -76,7 +81,9 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     # Zoolander       |         24
 
     # ------------------ ActiveRecord Solution ----------------------
-    custom_results = []
+    custom_results = User.select(:name, 'COUNT(items.id) as total_item_count')
+                         .joins(:items)
+                         .group(:name)
     # ---------------------------------------------------------------
 
     expect(custom_results[0].name).to eq(@user_2.name)
@@ -122,7 +129,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     # how will you turn this into the proper ActiveRecord commands?
 
     # ------------------ ActiveRecord Solution ----------------------
-    data = []
+    data = User.select(:name, 'orders.id as order_id, orders.amount/count(order_items.id) as avg_item_cost' ).joins(:orders, :order_items).group(:name, 'orders.id').order(name: :desc).order('avg_item_cost')
     # ---------------------------------------------------------------
 
     expect([data[0].user_name,data[0].order_id,data[0].avg_item_cost]).to eq([@user_1.name, @order_1.id, 50])
@@ -142,7 +149,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     expect([data[14].user_name,data[14].order_id,data[14].avg_item_cost]).to eq([@user_2.name, @order_14.id, 225])
   end
 
-  xit '30. returns the names of items that have been ordered without n+1 queries' do
+  it '30. returns the names of items that have been ordered without n+1 queries' do
     # What is an n+1 query?
     # This video is older, but the concepts explained are still relevant:
     # http://railscasts.com/episodes/372-bullet
@@ -153,7 +160,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     Bullet.start_request
 
     # ------------------------------------------------------
-    orders = Order.all # Edit only this line
+    orders =  Order.joins(:items, :order_items).includes(:items, :order_items)
     # ------------------------------------------------------
 
     # Do not edit below this line
